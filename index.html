@@ -59,7 +59,6 @@
       padding: 0 4px;
       margin-left: 6px;
       flex-shrink: 0;
-margin-top: 3px;
     }
     button.sub-delete:hover {
       background:#ff4d4d;
@@ -243,7 +242,13 @@ margin-top: 3px;
       deleteBtn.style.opacity = (mode==='small')?'0':'1';
       deleteBtn.addEventListener('mouseenter', ()=>deleteBtn.style.background='#ff4d4d');
       deleteBtn.addEventListener('mouseleave', ()=>deleteBtn.style.background='#cc6666');
-      deleteBtn.onclick = ()=>{ box.remove(); saveTasks(); };
+      deleteBtn.onclick = (e)=>{ 
+        e.stopPropagation();
+        if(box.dataset.mode === 'extended') {
+          box.remove(); 
+          saveTasks(); 
+        }
+      };
       box.appendChild(deleteBtn);
 
       let settingsBtn = document.createElement('div');

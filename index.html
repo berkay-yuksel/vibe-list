@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1e1e1e">
   <title>Vibe List</title>
+  <link rel="manifest" href="manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
     #infoModal {
@@ -63,6 +65,29 @@
     }
     button.sub-delete:hover {
       background:#ff4d4d;
+    }
+    button.sub-edit {
+      background: #4db8ff;
+      border: none;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0 4px;
+      margin-left: 4px;
+      flex-shrink: 0;
+    }
+    button.sub-edit:hover {
+      background:#3590d1;
+    }
+    input.edit-subtask {
+      font-size: 14px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 2px 4px;
+      box-sizing: border-box;
+      background:#fff;
+      color:#000;
     }
   </style>
 </head>
@@ -198,6 +223,16 @@
       box.style.wordWrap = 'break-word';
       box.style.overflowWrap = 'break-word';
 
+      // Apply saved color state
+      const c = parseInt(clicks, 10);
+      if(c === 1) {
+        box.style.background = 'rgba(255,210,120,0.6)';
+        box.style.color = '#000';
+      } else if(c === 2) {
+        box.style.background = 'rgba(90,255,180,0.6)';
+        box.style.color = '#000';
+      }
+
       const titleDiv = document.createElement('div');
       titleDiv.textContent = trimmed;
       titleDiv.style.wordWrap = 'break-word';
@@ -302,25 +337,78 @@
             });
           };
 
-          subList.querySelectorAll('div').forEach(sub=>{
-            if(!sub.querySelector('button')){
+          subList.querySelectorAll('div.sub-task').forEach(sub=>{
+            if(!sub.querySelector('button.sub-delete')){
               sub.style.display='flex';
               sub.style.justifyContent='space-between';
               sub.style.alignItems='flex-start';
               sub.style.flexWrap='wrap';
-              let btn = document.createElement('button');
-              btn.textContent='X';
-              btn.className='sub-delete';
-              btn.addEventListener('click', ev=>{
+              
+              const btnContainer = document.createElement('div');
+              btnContainer.style.display='flex';
+              btnContainer.style.gap='2px';
+              
+              let editBtn = document.createElement('button');
+              editBtn.textContent='✏';
+              editBtn.className='sub-edit';
+              editBtn.addEventListener('click', ev=>{
+                ev.stopPropagation();
+                const span = sub.querySelector('span');
+                const inputEdit = document.createElement('input');
+                inputEdit.type='text';
+                inputEdit.value=span.textContent;
+                inputEdit.className='edit-subtask';
+                const wasCompleted = span.style.textDecoration === 'line-through';
+                sub.innerHTML = '';
+                sub.appendChild(inputEdit);
+                inputEdit.focus();
+                inputEdit.addEventListener('keydown', e=>{
+                  if(e.key==='Enter'){
+                    const newSpan = document.createElement('span');
+                    newSpan.textContent = inputEdit.value;
+                    newSpan.style.wordWrap = 'break-word';
+                    newSpan.style.overflowWrap = 'break-word';
+                    newSpan.style.flex = '1';
+                    newSpan.style.minWidth = '0';
+                    newSpan.style.textDecoration = wasCompleted ? 'line-through' : 'none';
+                    newSpan.style.color = wasCompleted ? 'rgba(255,255,255,0.8)' : '#000';
+                    newSpan.addEventListener('click', ()=>{
+                      if(newSpan.style.textDecoration==='line-through'){
+                        newSpan.style.textDecoration='none';
+                        newSpan.style.color='#000';
+                      } else {
+                        newSpan.style.textDecoration='line-through';
+                        newSpan.style.color='rgba(255,255,255,0.8)';
+                      }
+                      saveTasks();
+                    });
+                    sub.innerHTML = '';
+                    sub.appendChild(newSpan);
+                    sub.appendChild(btnContainer);
+                    saveTasks();
+                  }
+                });
+              });
+              
+              let deleteBtn = document.createElement('button');
+              deleteBtn.textContent='X';
+              deleteBtn.className='sub-delete';
+              deleteBtn.addEventListener('click', ev=>{
                 ev.stopPropagation();
                 sub.remove();
                 saveTasks();
               });
-              sub.appendChild(btn);
+              
+              btnContainer.appendChild(editBtn);
+              btnContainer.appendChild(deleteBtn);
+              sub.appendChild(btnContainer);
             }
           });
         } else {
-          subList.querySelectorAll('div button.sub-delete').forEach(b=>b.remove());
+          subList.querySelectorAll('div.sub-task button.sub-delete, div.sub-task button.sub-edit').forEach(b=>b.remove());
+          subList.querySelectorAll('div.sub-task div').forEach(d=>{
+            if(d.style.display === 'flex' && !d.querySelector('span')) d.remove();
+          });
           let editBtn = titleDiv.querySelector('.edit-btn');
           if(editBtn) editBtn.remove();
         }
@@ -407,7 +495,10 @@
             settingsBtn.style.display='none';
             // Clean up settings mode elements
             showSettings = false;
-            subList.querySelectorAll('div button.sub-delete').forEach(b=>b.remove());
+            subList.querySelectorAll('div.sub-task button.sub-delete, div.sub-task button.sub-edit').forEach(b=>b.remove());
+            subList.querySelectorAll('div.sub-task div').forEach(d=>{
+              if(d.style.display === 'flex' && !d.querySelector('span')) d.remove();
+            });
             let editBtn = titleDiv.querySelector('.edit-btn');
             if(editBtn) editBtn.remove();
           }
@@ -468,6 +559,15 @@
     input.addEventListener('keydown', e=>{ if(e.key==='Enter') createTask(input.value); });
 
     loadTasks();
+
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('Service Worker registered'))
+          .catch(err => console.log('Service Worker registration failed:', err));
+      });
+    }
   </script>
 </body>
 </html>
